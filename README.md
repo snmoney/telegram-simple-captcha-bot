@@ -22,11 +22,9 @@ pip3 install captcha
 
 ### 获取Bot token
 
-这里你需要自行在 Telegram 上私聊 [@BotFather](https://t.me/BotFather) ，点击 start 后向它发送命令`/newbot`，后面的对话如下图所示：
+这里你需要自行在 Telegram 上私聊 [@BotFather](https://t.me/BotFather) ，点击 start 后向它发送命令`/newbot` 创建机器人
 
-![](https://static.tstrs.me/20210226new_bot.png)
-
-最下面红框部分为你的 bot token.
+获得 bot token.
 
 ### 获取源码
 
