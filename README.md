@@ -1,12 +1,12 @@
-## 一个简单的 Telegram 入群验证 Bot
+原版来自： https://github.com/SaltyLeo/telegram-simple-captcha-bot
 
-使用效果展示:(视频在 YouTube)
+其余部署说明可参考原版
 
-https://youtu.be/l9MTDzRq2jw
+## 本fork主要的改动
+* 修改为支持多个群组
+* 增加一个指令`/groupid`在电报端获取群组ID值
+* 验证码的随机4字替换为成语字典（待实现）
 
-如果有兴趣想要自己搭建一个验证 Bot 可以参考以下步骤。
-
-首先就是 VPS 选择：必须得是 GFW 外面的 VPS 上才能部署，要不然无法访问 Telegram 的 API，自然也无法使用相应的功能了。
 
 ### 安装环境
 
@@ -33,7 +33,7 @@ pip3 install captcha
 上面的全部都安装好后使用以下命令从 GitHub 获取源码。
 
 ```
-git clone https://github.com/SaltyLeo/telegram-simple-captcha-bot.git
+git clone https://github.com/snmoney/telegram-simple-captcha-bot.git
 ```
 如一切正常，应该是如下输出：
 
@@ -53,7 +53,7 @@ Unpacking objects: 100% (13/13), done.
 ```
 cd telegram-simple-captcha-bot && nano tgbot.py
 
-# 修改第18行，将 Token 添加到引号内。
+# 修改TOKEN值，将 Token 添加到引号内。
 TOKEN = ''#你的bot_TOKEN
 
 #修改为如下所示即可:
@@ -74,15 +74,11 @@ bot 已启动 ...
 本群组ID为: -10011342xxxxx
 ```
 
-记住你的群组 ID，我们再次编辑 `tgbot.py ` 文件，将群组 ID 放到第17行的引号中，如下所示：
+记住你的群组 ID，再次编辑 `tgbot.py ` 文件，将群组 ID 添加到 auth_chats 中：
 
 ```
-auth_chat = '-10011342xxxxx'#群组id
+auth_chat = ['-10011342xxxxx','第二个群组的ID']#群组id
 TOKEN = '1571461630:AAHtC3BXXXXXXXXXXXXXvF-bGuRG4w8YYI'#你的bot_TOKEN
 ```
 
-最后记得保存文件并退出，Bot 所有的配置均已完成。你现在可以使用命令 `python3 tgbot.py` 启动 Bot，然后使用小号入群测试，应该和本文开篇的视频效果一致。
-
-### 持久化运行
-
-未完待续
+保存文件并退出，Bot 所有的配置均已完成。你现在可以使用命令 `python3 tgbot.py` 启动 Bot，然后使用小号入群测试，应该和本文开篇的视频效果一致。
