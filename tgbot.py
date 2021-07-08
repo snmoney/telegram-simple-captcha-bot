@@ -14,15 +14,16 @@ from captcha.image import ImageCaptcha
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
 id_count = redis.StrictRedis(host='localhost',port=6379,db=5,charset='UTF-8')#临时数据存放
-auth_chat = '-10011342xxxxx'#群组id
-TOKEN = '1571461630:AAHtC3BXXXXXXXXXXXXXvF-bGuRG4w8YYI'#你的bot_TOKEN
+#auth_chat = ''#群组id
+auth_chats = [] #['群id1','群id2' ... ] #改为多组授权
+TOKEN = ''#你的bot_TOKEN
 chinese_captcha = [] #全局中文字符串集合
 user_list = [] #未验证用户集
 del_count = 0 #已删除机器人统计
 def set_chinese():#将文件写入全局变量
     global chinese_captcha
     try:
-        f = open('hz.json', 'r')    # 打开文件
+        f = open('hz.json', 'r', encoding='UTF-8')    # 打开文件
         chinese_captcha = f.read()  # 读取文件内容
     finally:
         if f:
@@ -51,7 +52,8 @@ def bulid_kb(gcc):
 
 def on_chat_message(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
-    if str(chat_id) == auth_chat:
+    #if str(chat_id) == auth_chat:
+    if str(chat_id) in auth_chats:
         #用户ID
         members_id = msg['from']['id']
         if content_type == 'new_chat_member':
@@ -74,7 +76,7 @@ def on_chat_message(msg):
             #加到新用户列表
             user_list.append(members_id)#加到list
             #添加到redis，并设置自动销毁时间为110秒。
-            id_count.rpush(members_id,bkg[1],sp['message_id'])
+            id_count.rpush(members_id,bkg[1],sp['message_id'], chat_id)
             id_count.expire(members_id,110)
         elif content_type == 'left_chat_member':
             #删除退群信息
@@ -83,16 +85,32 @@ def on_chat_message(msg):
             #未完成流程就退出群组，封锁掉。
             if cc_code != None:
                 try:
-                    bot.deleteMessage((auth_chat,int(id_count.lrange(members_id,0,-1)[1].decode('utf-8'))))
+                    bot.deleteMessage((chat_id, int(id_count.lrange(members_id,0,-1)[1].decode('utf-8'))))
                     id_count.delete(members_id)
-                    bot.kickChatMember(auth_chat,members_id)
+                    bot.kickChatMember(chat_id, members_id)
                     user_list.remove(members_id)
                 except:
                     pass
-    elif auth_chat == '':
+    # 新增消息处理
+    elif content_type == 'text':        
+        if msg['text'] == '/groupid':
+            #print('本群组ID: ' + str(chat_id))
+            bot.sendMessage(chat_id, '本群组ID: ' + str(chat_id))
+        elif msg['text'] == '/start' and chat_id > 0: #机器人的欢迎信息（简要说明）确保指令私聊中发生
+            res_msg = '入群验证机器人添加使用步骤： \n\n' \
+                      '1. 把机器人邀请到需要管理的群组 \n' \
+                      '2. 提权为管理员，添加 `删除消息` 和 `封禁用户` 的权限 \n' \
+                      '3. 在群组中发送 /groupid 命令，机器人返回本群ID \n' \
+                      '4. 把群ID添加到授权群名单中。\n\n' \
+                      '*配置完成*'
+                      
+            bot.sendMessage(chat_id, res_msg)
+
+    elif auth_chat == '': #本地调试
         print('本群组ID为: '+str(chat_id))
 def on_callback_query(msg):
-    query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
+    query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')    
+    chat_id = msg["message"]["chat"]["id"]
     raw_uid = msg['message']['caption_entities'][0]['user']['id']
     if raw_uid == from_id:
         icl = id_count.llen(from_id)
@@ -101,26 +119,26 @@ def on_callback_query(msg):
             #校验验证码与返回是否一致
             if cc_code[0].decode('utf-8') == query_data:
                 #解除封锁
-                bot.restrictChatMember(auth_chat,from_id,can_send_messages=True, can_send_other_messages=True,can_add_web_page_previews=True)
+                bot.restrictChatMember(chat_id, from_id, can_send_messages=True, can_send_other_messages=True,can_add_web_page_previews=True)
                 bot.answerCallbackQuery(query_id, text='你已通过验证！')
                 #验证通过删除验证消息
                 bot.deleteMessage(telepot.message_identifier(msg['message']))
                 #从redis 和 新用户列表中移除。
                 id_count.delete(from_id)
                 user_list.remove(from_id)
-            elif icl == 2:
+            elif icl == 3:
                 #验证错误，提示还有一次机会。
                 bot.answerCallbackQuery(query_id, text='验证错误，请重试。\n你还有一次机会。')
                 id_count.rpush(from_id,'0')
-            elif icl == 3:
+            elif icl == 4:
                 #移出群组
                 bot.answerCallbackQuery(query_id, text='验证错误，再见。') 
-                bot.kickChatMember(auth_chat,from_id) 
+                bot.kickChatMember(chat_id, from_id)
                 bot.deleteMessage(telepot.message_identifier(msg['message']))
                 id_count.delete(from_id)
                 user_list.remove(from_id)
             else:
-                bot.kickChatMember(auth_chat,from_id) 
+                bot.kickChatMember(chat_id, from_id)
                 bot.deleteMessage(telepot.message_identifier(msg['message']))
                 id_count.delete(from_id)
                 user_list.remove(from_id)
@@ -132,25 +150,22 @@ def on_callback_query(msg):
 # 如果需要使用代理，取下下面这行的注释，并填写你使用的代理服务器地址（URL）。
 # telepot.api.set_proxy("http://127.0.0.1:xxxx")
 bot = telepot.Bot(TOKEN)
-MessageLoop(bot, {'chat': on_chat_message,'callback_query': on_callback_query}).run_as_thread()
+MessageLoop(bot, {'chat': on_chat_message, 'callback_query': on_callback_query}).run_as_thread()
 set_chinese()
 print ('bot 已启动 ...')
 
 while 1:
     #每3秒统计一遍未验证用户是否达到90秒限制。
-    time.sleep(3)
-    for i in user_list:
-        if id_count.ttl(i) <=20:
+    time.sleep(3)    
+    for i in user_list:        
+        chat_id = int(id_count.lrange(i, 0, -1)[2].decode('utf-8')) #从redis中取出对应会话id 
+        if id_count.ttl(i) <= 20:
             try:
-                bot.deleteMessage((auth_chat,int(id_count.lrange(i,0,-1)[1].decode('utf-8'))))
+                bot.deleteMessage((chat_id, int(id_count.lrange(i,0,-1)[1].decode('utf-8'))))
                 id_count.delete(i)
                 user_list.remove(i)
-                bot.kickChatMember(auth_chat,i)
+                bot.kickChatMember(chat_id, i)
                 del_count = del_count + 1
                 print('已移除 %s 个未完成验证的用户'%del_count)
             except:
                 pass
-
-    
-    
-
