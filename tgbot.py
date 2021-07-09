@@ -54,11 +54,11 @@ def on_chat_message(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
     #if str(chat_id) == auth_chat:
     if str(chat_id) in auth_chats:
+        #新用户列表
+        global user_list 
         #用户ID
         members_id = msg['from']['id']
-        if content_type == 'new_chat_member':
-            #新用户列表
-            global user_list 
+        if content_type == 'new_chat_member':            
             #用户昵称
             new_members_name = msg['from']['first_name']
             #限制新入群成员所有权限
@@ -93,8 +93,8 @@ def on_chat_message(msg):
                     pass
     # 新增消息处理
     elif content_type == 'text':        
-        if msg['text'] == '/groupid':
-            #print('本群组ID: ' + str(chat_id))
+        if '/groupid' in msg['text']:
+            print('本群组ID: ' + str(chat_id))
             bot.sendMessage(chat_id, '本群组ID: ' + str(chat_id))
         elif msg['text'] == '/start' and chat_id > 0: #机器人的欢迎信息（简要说明）确保指令私聊中发生
             res_msg = '入群验证机器人添加使用步骤： \n\n' \
@@ -106,8 +106,8 @@ def on_chat_message(msg):
                       
             bot.sendMessage(chat_id, res_msg)
 
-    elif auth_chat == '': #本地调试
-        print('本群组ID为: '+str(chat_id))
+    #elif auth_chat == '': #本地调试
+    #    print('本群组ID为: '+str(chat_id))
 def on_callback_query(msg):
     query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')    
     chat_id = msg["message"]["chat"]["id"]
